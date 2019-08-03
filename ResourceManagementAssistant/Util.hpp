@@ -254,8 +254,8 @@ class HttpResponse
       Util::DigitTostr(rsp_body.length(), cont_len);
 
       std::string rsp_header;
-			rsp_header = info._version + " " + info.error_code + " ";
-      rsp_header += Util::GetErrNumState(info.error_code) + "\r\n";
+      rsp_header = info._version + " " + info.error_code + " "; //首行  协议版本 状态码 
+      rsp_header += Util::GetErrNumState(info.error_code) + "\r\n";// 状态描述\r\n
       rsp_header += "Date: " + gmt + "\r\n";
       rsp_header += "Content-Length: " + cont_len + "\r\n\r\n";
 
