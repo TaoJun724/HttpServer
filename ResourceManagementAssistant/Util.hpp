@@ -192,17 +192,17 @@ class HttpResponse
     std::string _mime;
   public:
     HttpResponse(int sock):_cli_sock(sock){}
-		//初始化一些请求的响应
-		//文件的大小 文件的节点号  文件的最后一次修改时间
+    //初始化一些请求的响应
+    //文件的大小 文件的节点号  文件的最后一次修改时间
     bool InitResponse(RequestInfo& req_info)
     {
-			//Date
+     //Date
       Util::TimeToGMT(req_info._st.st_mtime, _mtime);
-   		//ETAG
-	 		Util::MakeETag(req_info._st.st_ino, req_info._st.st_mtime, req_info._st.st_size, _etag);
+     //ETAG
+      Util::MakeETag(req_info._st.st_ino, req_info._st.st_mtime, req_info._st.st_size, _etag);
       time_t t = time(NULL);
       Util::TimeToGMT(t, _date);
-			//Last-Modified
+      //Last-Modified
       Util::DigitTostr(req_info._st.st_size, _fsize);
       Util::GetMime(req_info._path_info, _mime);
       return true;
