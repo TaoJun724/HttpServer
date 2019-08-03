@@ -128,6 +128,7 @@ class Util{
     //生成ETag
     static void MakeETag(int64_t size,int64_t ino,int64_t mtime,std::string& etag)
     {
+      //"ino-size-mtime"
       std::stringstream ss;
       //std::hex按十六进制输出
       ss<<"\""<<std::hex <<ino<<"-" <<std::hex<<size<<"-"<<std::hex<<mtime << "\"";
