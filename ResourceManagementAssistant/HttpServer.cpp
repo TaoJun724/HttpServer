@@ -28,13 +28,17 @@ class HttpServer
             RequestInfo info;
 
             LOG("RecvHttpHeader\n");
+		
+            //接受http头部		
             if(req.RecvHttpHeader(info) == false){
               LOG("request err\n");
               goto out;
             }//接收请求出错，需要保存错误信息
 
             LOG("PraseHttpHeader\n");
-            if(req.ParseHttpHeader(info) == false){
+            
+	    //解析http头部
+	    if(req.ParseHttpHeader(info) == false){
               goto out;
             }
 
