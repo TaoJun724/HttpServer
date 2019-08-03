@@ -258,7 +258,7 @@ class HttpResponse
       rsp_header += Util::GetErrNumState(info.error_code) + "\r\n";// 状态描述\r\n
       rsp_header += "Date: " + gmt + "\r\n";
       rsp_header += "Content-Length: " + cont_len + "\r\n\r\n";
-
+      //先发送头部，再发送正文
       send(_cli_sock, rsp_header.c_str(), rsp_header.length(), 0);
       send(_cli_sock, rsp_body.c_str(), rsp_body.length(), 0);
       return true;
