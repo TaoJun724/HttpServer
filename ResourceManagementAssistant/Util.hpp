@@ -217,6 +217,7 @@ class HttpResponse
       return true;
     }
 
+    //利用分块传输发送正文数据
     bool SendCData(const std::string& data)
     {
       //判断协议是否为1.1
