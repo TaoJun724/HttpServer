@@ -270,38 +270,126 @@ class HttpResponse
       InitResponse(info);
       ProcessCGI(info);
     }
-    bool ProcessFile(RequestInfo & info) //文件下载功能
+	
+	
+    bool BreakPointResume(RequestInfo& info)
     {
-      LOG("进入下载\n");
-      std::string rsp_header;
-      rsp_header = info._version + " 200 OK\r\n";
-      rsp_header += "Connection: close\r\n";
-      rsp_header += "Content-Type: " + _mime + "\r\n";
-      rsp_header += "Content-Length: " + _fsize + "\r\n"; //
-      rsp_header += "ETag: " + _etag + "\r\n";
-      rsp_header += "Last-Modified: " + _mtime + "\r\n";
-      rsp_header += "Date: " + _date + "\r\n\r\n";
-      SendData(rsp_header);
-
-      LOG("rsp_header [ %s  ]\n", rsp_header.c_str());
-
-      int fd = open(info._path_phys.c_str(), O_RDONLY);
-      if(fd < 0){
-        info.SetError("400");
-        ErrHandler(info);
-        return false;
-      }
-      LOG("open file \n");  
-      int rlen = 0;
-      char tmp[MAX_BUFF];
-      while((rlen = read(fd, tmp, MAX_BUFF)) > 0){
-        //不能用string 或char*来发送数据 ，因为可能会在文件中有0  //可能会造成对端关闭
-        if(send(_cli_sock, tmp, rlen, 0) < 0)
-        {
-          fprintf(stdout,"send error");
+    	std::string if_range = info._hdr_pair.find("If-Range")->second;
+        auto it = info._hdr_pair.find("Range");
+        if(it == info._hdr_pair.end()){
+            return false;
         }
-      }
-      close(fd);
+        std::string bytes = it->second;
+        size_t pos = bytes.find("bytes=");
+        size_t post = bytes.find('-');
+        if(post == std::string::npos)
+            return false;
+        std::string start = bytes.substr(pos + 6, post - (pos + 6));
+        std::string end = bytes.substr(post + 1);
+        int64_t finnal;
+        if(end.empty()){
+            finnal = info._st.st_size - 1;
+        }
+        else{
+            finnal = Utils::StrToDigit(end);
+        }
+        int64_t begin = Utils::StrToDigit(start);
+        size_t byte = finnal - begin + 1;
+        
+        //组织html头部 
+        std::string rsp_header = info._version + " 206 PARTY_CONTENT\r\n";
+        rsp_header += "Content-Type: application/octet-stream\r\n"; 
+        //标志文件是否被修改
+        rsp_header += "Etag: " + _etag + "\r\n";
+        //文件大小
+        std::string slen;
+        Utils::DigitToStr(byte, slen);
+        rsp_header += "Content-Length: " + slen + "\r\n"; 
+        int64_t fsize = info._st.st_size;
+        Utils::DigitToStr(fsize, slen);
+
+        Utils::DigitToStr(begin, start);
+        Utils::DigitToStr(finnal, end);
+
+        rsp_header += "Content-Range: bytes " + start + "-" + end + "/" + slen + "\r\n";
+        rsp_header += "Accept-Ranges: bytes\r\n";
+        rsp_header += "Last-Modified: " + _date + "\r\n\r\n";
+        SendData(rsp_header);
+        std::cout << rsp_header << std::endl;
+        //发送文件
+        int fp = open(info._path_phys.c_str(), O_RDONLY);
+        if(fp < 0){
+            info._err_code = "400";
+            std::cerr << "open error!" << std::endl;
+            return false;
+        }
+        lseek(fp, begin, SEEK_SET);
+        //cerr << "seek: " << ftell(fp) << endl; 
+        char tmp[MAX_BUFF];
+        size_t clen = 0;
+        size_t rlen = 0;
+        while(clen < byte){
+            int len = (byte - clen) > (MAX_BUFF-1) ? (MAX_BUFF-1) : (byte-clen);
+            rlen = read(fp, tmp, len);
+            clen += rlen;
+            send(_cli_sock, tmp, rlen, 0);
+        }
+        close(fp);
+        return true;
+    }
+	
+	
+    bool ProcessFile(RequestInfo & info) //文件下载功能
+  {
+           auto it = info._hdr_pair.find("If-Range");
+    	   if(it != info._hdr_pair.end()){
+	        std::string if_range = it->second;
+	        std::string etag_tmp = _etag;
+
+	        if(etag_tmp == if_range){
+				//执行断点续传功能
+				if(BreakPointResume(info)){
+				    return true;
+				}
+				info._err_code = "404";
+				ErrHandler(info);
+				return false;
+	      	}
+    	}
+
+		//头部
+		std::string rsp_header;
+		rsp_header = info._version + " 200 OK\r\n";
+		//决定服务端如何处理响应的数据
+		rsp_header += "Content-Type: application/octet-stream;charset=UTF-8\r\n";
+		//短链接
+		rsp_header += "Content-Length: " + _fsize + "\r\n";
+    	rsp_header += "Accept-Ranges: bytes\r\n";
+		rsp_header += "ETag: "+ _etag + "\r\n";
+		rsp_header += "Last-Modifyed: " + _mtime + "\r\n";
+		rsp_header += "Date: "+ _date + "\r\n\r\n";
+    
+		//正常传输
+		SendData(rsp_header);
+		LOG("File rsp:[%s]\n", rsp_header.c_str());
+
+		//文件数据 
+		int fd = open(info._path_phys.c_str(), O_RDONLY);
+		if (fd < 0)
+		{
+			info._err_code = "400";
+			ErrHandler(info);
+			return false;
+		}
+
+		int rlen = 0;
+		char buf[MAX_BUFF];
+		while((rlen = read(fd,buf,sizeof(buf))) > 0 )
+		{
+			send(_cli_sock,buf,rlen,0);
+		}
+		close(fd);
+		return true;
       //使用md5sum对文件进行验证
     }
 
