@@ -61,55 +61,59 @@ class HttpServer
           return true;
         }
     public:
-				HttpServer()
+       HttpServer()
           :_serv_sock(-1)
            , _tp(NULL) 
         {}
 
-        bool HttpServerInit(std::string ip, uint16_t port) //完成TCP服务端初始化，线程池的初始化
-				{
-					_serv_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-					if(_serv_sock < 0){
-						LOG("sock error : %s\n", strerror(errno));
-						return false;
-					}
+       bool HttpServerInit(std::string ip, uint16_t port) //完成TCP服务端初始化，线程池的初始化
+       {
+	   _serv_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+            if(_serv_sock < 0)
+	    {
+		LOG("sock error : %s\n", strerror(errno));
+		return false;
+	    }
 
-          std::cout << "socket creat success!!" <<std::endl;
+           std::cout << "socket creat success!!" <<std::endl;
 
-          //设置套接字选项，使端口地址可以复用
-          int ov = 1;
-          setsockopt(_serv_sock, SOL_SOCKET, SO_REUSEADDR, (void*)&ov, sizeof(ov));
+           //设置套接字选项，使端口地址可以复用
+           int ov = 1;
+           setsockopt(_serv_sock, SOL_SOCKET, SO_REUSEADDR, (void*)&ov, sizeof(ov));
 
-					struct sockaddr_in  addr;
-					addr.sin_family = AF_INET;
-					addr.sin_port = htons(port);
-				  addr.sin_addr.s_addr = inet_addr(ip.c_str());
+	   struct sockaddr_in  addr;
+	   addr.sin_family = AF_INET;
+	   addr.sin_port = htons(port);
+	   addr.sin_addr.s_addr = inet_addr(ip.c_str());
           
-					if(bind(_serv_sock, (sockaddr*)&addr, sizeof(addr)) < 0){   
-						LOG("bind error %s\n",strerror(errno));
-						close(_serv_sock);
-						return false;
-					}
+	   if(bind(_serv_sock, (sockaddr*)&addr, sizeof(addr)) < 0)
+	   {   
+		LOG("bind error %s\n",strerror(errno));
+		close(_serv_sock);
+		return false;
+	    }
 
-          std::cout << "bind success!!" <<std::endl;
-					if(listen(_serv_sock, MAX_LISTEN) < 0){
-						LOG("liste error %s\n", strerror(errno));
-						close(_serv_sock);
-						return false;
-					}
+           std::cout << "bind success!!" <<std::endl;
+	   if(listen(_serv_sock, MAX_LISTEN) < 0)
+	   {
+		LOG("liste error %s\n", strerror(errno));
+	        close(_serv_sock);
+		return false;
+	   }
 
-					_tp = new ThreadPool(MAX_THREAD);
-					if(_tp->ThreadPoolInit() == false){
-						LOG("thread pool init error \n");
-					}
+	   _tp = new ThreadPool(MAX_THREAD);
+	   if(_tp->ThreadPoolInit() == false){
+		LOG("thread pool init error \n");
+           }
 
           std::cout << "ThreadPool Init success!!" <<std::endl;
-					return true;
-				}
+	   return true;
+      }
 					
-				//开始获取服务器的新连接--创建任务，任务入队
-        bool Start()
-				{
+
+     //开始获取服务器的新连接--创建任务，任务入队
+      bool Start()
+      {
           while(1){          
             sockaddr_in cli_addr;
             socklen_t len = sizeof(cli_addr);
