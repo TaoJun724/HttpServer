@@ -503,7 +503,7 @@ class HttpRequest{
       while(1)
       {
         //把flags设置为MSG_PEEK，仅仅是把tcp 缓冲区中的数据读取到buf中，没有把已读取的数据从tcp 缓冲区中移除，如果再次调用recv()函数仍然可以读到刚才读到的数据。
-        int ret = recv(_cli_sock,buf,MAX_HTTPHDR,MSG_PEEK);
+        int ret = recv(_cli_sock,buf,MAX_HTTPHDR,MSG_PEEK);//当recv=0表示对端关闭连接了，对于send函数触发SIGPIPE信号就是对端关闭连接了。
         LOG("ret : %d\n", ret);
         if(ret <= 0)
         {
